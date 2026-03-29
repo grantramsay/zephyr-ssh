@@ -21,6 +21,8 @@ keys import/storage.
 
 [Sample README](samples/net/ssh/README.md)
 
+![](demo.gif)
+
 ## Supported
 
 * Multiple SSH Servers
