@@ -2,6 +2,8 @@
 
 An SSH client/server for Zephyr RTOS.
 
+Currently tested against Zephyr v4.3-branch (b08ea667c013a4f417f55de2cc2fc0e5bb5fec03).
+
 This is an experimental project. I recommend only running this inside a trusted
 network. Consider adding a dummy user when interacting with your computer:
 ```shell

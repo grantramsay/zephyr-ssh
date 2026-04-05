@@ -131,7 +131,7 @@ static int ssh_client_channel_event_callback(struct ssh_channel *channel, const 
 				return len;
 			}
 //			LOG_HEXDUMP_INF(buff, len, "Client channel data");
-			shell_print_impl(sh, "%.*s", len, buff);
+			shell_fprintf_normal(sh, "%.*s", len, buff);
 		}
 		break;
 	}
@@ -147,7 +147,7 @@ static int ssh_client_channel_event_callback(struct ssh_channel *channel, const 
 				return len;
 			}
 //			LOG_HEXDUMP_INF(buff, len, "Client channel ext data");
-			shell_error_impl(sh, "%.*s", len, buff);
+			shell_fprintf_error(sh, "%.*s", len, buff);
 		}
 		break;
 	}

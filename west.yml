@@ -9,7 +9,7 @@ manifest:
   projects:
     - name: zephyr
       remote: zephyrproject-rtos
-      revision: 7cf124b4a96414dcf72eb564e700e8d3a895f222
+      revision: b08ea667c013a4f417f55de2cc2fc0e5bb5fec03
       import:
         name-allowlist:
           - mbedtls
