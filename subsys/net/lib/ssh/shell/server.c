@@ -17,7 +17,6 @@ static int ssh_server_event_callback(struct ssh_server *ssh_server, const struct
 static int ssh_server_transport_event_callback(struct ssh_transport *transport, const struct ssh_transport_event *event, void *user_data);
 static int ssh_server_channel_event_callback(struct ssh_channel *channel, const struct ssh_channel_event *event, void *user_data);
 
-// TODO: Move shell stuff to an SSH shell backend
 #define SHELL_SSH_DEFINE(_name)						\
 	static struct shell_ssh _name##_shell_ssh;			\
 	struct shell_transport _name = {				\

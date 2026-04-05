@@ -5,12 +5,6 @@ cmake_minimum_required(VERSION 3.20.0)
 find_package(Zephyr REQUIRED HINTS $ENV{ZEPHYR_BASE})
 project(ssh)
 
-target_sources(app PRIVATE src/main.c src/keygen.c)
-if (CONFIG_SSH_SERVER)
-    target_sources(app PRIVATE src/server.c)
-endif()
-if (CONFIG_SSH_CLIENT)
-    target_sources(app PRIVATE src/client.c)
-endif()
+target_sources(app PRIVATE src/main.c)
 
 zephyr_include_directories(.)

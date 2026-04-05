@@ -42,6 +42,10 @@ endif
 
 if SSH
 
+config SSH_SHELL
+    bool "SSH shell command support"
+    default y
+
 config SSH_MAX_CHANNELS
     int "SSH max channels (per transport)"
     default 1
