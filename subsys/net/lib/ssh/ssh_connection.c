@@ -11,11 +11,12 @@ LOG_MODULE_DECLARE(ssh, CONFIG_NET_SSH_LOG_LEVEL);
 struct ssh_channel *ssh_connection_allocate_channel(struct ssh_transport *transport)
 {
 	struct ssh_channel *channel = NULL;
+	uint32_t local_channel = UINT32_MAX;
 
 	for (size_t i = 0; i < ARRAY_SIZE(transport->channels); i++) {
 		if (!transport->channels[i].in_use) {
 			channel = &transport->channels[i];
-			channel->local_channel = i;
+			local_channel = i;
 			break;
 		}
 	}
@@ -23,6 +24,7 @@ struct ssh_channel *ssh_connection_allocate_channel(struct ssh_transport *transp
 	if (channel != NULL) {
 		memset(channel, 0, sizeof(*channel));
 		channel->transport = transport;
+		channel->local_channel = local_channel;
 		channel->remote_channel = UINT32_MAX;
 		ring_buf_init(&channel->tx_ring_buf, sizeof(channel->tx_ring_buf_data), channel->tx_ring_buf_data);
 		ring_buf_init(&channel->tx_stderr_ring_buf, sizeof(channel->tx_stderr_ring_buf_data), channel->tx_stderr_ring_buf_data);
