@@ -120,6 +120,17 @@ int ssh_channel_request_shell(struct ssh_channel *channel)
 }
 #endif
 
+int ssh_channel_set_user_data(struct ssh_channel *channel, void *user_data)
+{
+	if (channel == NULL || !channel->in_use) {
+		return -EINVAL;
+	}
+
+	channel->user_data = user_data;
+
+	return 0;
+}
+
 int ssh_channel_read(struct ssh_channel *channel, void *data, uint32_t len)
 {
 	if (channel == NULL || !channel->in_use || !channel->open ||

@@ -46,6 +46,16 @@ config SSH_SHELL
     bool "SSH shell command support"
     default y
 
+config SSH_SERVER_SHELL_PROMPT
+    string
+    depends on SSH_SHELL && SSH_SERVER
+    default "zephyr:~$ "
+
+config SSH_SERVER_SHELL_COUNT
+    int "SSH max channels (per transport)"
+    depends on SSH_SHELL && SSH_SERVER
+    default 1
+
 config SSH_MAX_CHANNELS
     int "SSH max channels (per transport)"
     default 1

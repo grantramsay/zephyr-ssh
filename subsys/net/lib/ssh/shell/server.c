@@ -28,6 +28,7 @@ struct shell_ssh {
 	shell_transport_handler_t handler;
 	void *context;
 	struct ssh_channel *ssh_channel;
+	bool in_use;
 };
 
 static int shell_ssh_init(const struct shell_transport *transport,
@@ -92,35 +93,40 @@ const struct shell_transport_api shell_ssh_transport_api = {
 	.read = shell_ssh_read
 };
 
-#define CONFIG_SSH_SERVER_SHELL_PROMPT "zephyr:~$ "
-
-// TODO: Make an array of these?
-SHELL_SSH_DEFINE(shell_transport_ssh);
-SHELL_DEFINE(shell_ssh, CONFIG_SSH_SERVER_SHELL_PROMPT, &shell_transport_ssh,
-	     CONFIG_SHELL_BACKEND_SERIAL_LOG_MESSAGE_QUEUE_SIZE,
-	     CONFIG_SHELL_BACKEND_SERIAL_LOG_MESSAGE_QUEUE_TIMEOUT,
-	     SHELL_FLAG_OLF_CRLF);
-/*
-#define CONFIG_SSH_SERVER_SHELL_COUNT 4
-
 #define SHELL_SSH_DEFINE_ALL(n, _) \
 	SHELL_SSH_DEFINE(shell_transport_ssh_##n); \
-	SHELL_DEFINE(shell_ssh_##n, CONFIG_SHELL_PROMPT_SSH, &shell_transport_ssh_##n, \
+	SHELL_DEFINE(shell_ssh_##n, CONFIG_SSH_SERVER_SHELL_PROMPT, &shell_transport_ssh_##n, \
 		     CONFIG_SHELL_BACKEND_SERIAL_LOG_MESSAGE_QUEUE_SIZE, \
 		     CONFIG_SHELL_BACKEND_SERIAL_LOG_MESSAGE_QUEUE_TIMEOUT, \
 		     SHELL_FLAG_OLF_CRLF);
 
-LISTIFY(CONFIG_SSH_SHELL_COUNT, SHELL_SSH_DEFINE_ALL, (;))
+LISTIFY(CONFIG_SSH_SERVER_SHELL_COUNT, SHELL_SSH_DEFINE_ALL, (;))
 
-#define SHELL_SSH_REFERENCE_ALL(n, _) \
+#define SHELL_SSH_REF(n, _) \
 	&shell_ssh_##n
 
 static const struct shell *const ssh_shell_instances[] = {
-	LISTIFY(CONFIG_SSH_SHELL_COUNT, SHELL_SSH_REFERENCE_ALL, (,))
+	LISTIFY(CONFIG_SSH_SERVER_SHELL_COUNT, SHELL_SSH_REF, (,))
 };
-*/
 
+static const struct shell *ssh_server_shell_instance_alloc(void)
+{
+	for (size_t i = 0; i < ARRAY_SIZE(ssh_shell_instances); i++) {
+		const struct shell *sh = ssh_shell_instances[i];
+		struct shell_ssh *sh_ssh = sh->iface->ctx;
+		if (!sh_ssh->in_use) {
+			sh_ssh->in_use = true;
+			return sh;
+		}
+	}
+	return NULL;
+}
 
+static void ssh_server_shell_instance_free(const struct shell *sh)
+{
+	struct shell_ssh *sh_ssh = sh->iface->ctx;
+	sh_ssh->in_use = false;
+}
 
 
 static int ssh_server_event_callback(struct ssh_server *ssh_server, const struct ssh_server_event *event, void *user_data)
@@ -173,10 +179,17 @@ static int ssh_server_channel_event_callback(struct ssh_channel *channel, const 
 		case SSH_CHANNEL_REQUEST_SHELL: {
 			static const struct shell_backend_config_flags cfg_flags =
 				SHELL_DEFAULT_BACKEND_CONFIG_FLAGS;
-			int res = shell_init(&shell_ssh, channel, cfg_flags,
-					     false, LOG_LEVEL_NONE);
-			if (res != 0) {
-				LOG_ERR("shell_init error");
+			const struct shell *sh = ssh_server_shell_instance_alloc();
+			if (sh != NULL) {
+				int res = shell_init(sh, channel, cfg_flags, false, LOG_LEVEL_NONE);
+				if (res == 0) {
+					ssh_channel_set_user_data(channel, (void *)sh);
+				} else {
+					LOG_ERR("shell_init error");
+					ssh_server_shell_instance_free(sh);
+				}
+			} else {
+				LOG_ERR("No SSH server shell instances remaining");
 			}
 			success = true;
 			break;
@@ -196,13 +209,19 @@ static int ssh_server_channel_event_callback(struct ssh_channel *channel, const 
 		return 0;
 	}
 	case SSH_CHANNEL_EVENT_RX_DATA_READY: {
-		struct shell_ssh *sh_ssh = &shell_transport_ssh_shell_ssh;
-		sh_ssh->handler(SHELL_TRANSPORT_EVT_RX_RDY, sh_ssh->context);
+		const struct shell *sh = user_data;
+		if (sh != NULL) {
+			struct shell_ssh *sh_ssh = sh->iface->ctx;
+			sh_ssh->handler(SHELL_TRANSPORT_EVT_RX_RDY, sh_ssh->context);
+		}
 		break;
 	}
 	case SSH_CHANNEL_EVENT_TX_DATA_READY: {
-		struct shell_ssh *sh_ssh = &shell_transport_ssh_shell_ssh;
-		sh_ssh->handler(SHELL_TRANSPORT_EVT_TX_RDY, sh_ssh->context);
+		const struct shell *sh = user_data;
+		if (sh != NULL) {
+			struct shell_ssh *sh_ssh = sh->iface->ctx;
+			sh_ssh->handler(SHELL_TRANSPORT_EVT_TX_RDY, sh_ssh->context);
+		}
 		break;
 	}
 	case SSH_CHANNEL_EVENT_RX_STDERR_DATA_READY:
@@ -211,10 +230,15 @@ static int ssh_server_channel_event_callback(struct ssh_channel *channel, const 
 	case SSH_CHANNEL_EVENT_EOF:
 		LOG_INF("Server channel EOF");
 		break;
-	case SSH_CHANNEL_EVENT_CLOSED:
+	case SSH_CHANNEL_EVENT_CLOSED: {
 		LOG_INF("Server channel closed");
-		shell_uninit(&shell_ssh, NULL);
+		const struct shell *sh = user_data;
+		if (sh != NULL) {
+			shell_uninit(sh, NULL);
+			ssh_server_shell_instance_free(sh);
+		}
 		break;
+	}
 	default:
 		return -1;
 	}

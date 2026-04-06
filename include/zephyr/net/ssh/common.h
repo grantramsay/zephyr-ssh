@@ -126,6 +126,7 @@ int ssh_channel_request_result(struct ssh_channel *channel, bool success);
 int ssh_channel_request_shell(struct ssh_channel *channel);
 #endif
 
+int ssh_channel_set_user_data(struct ssh_channel *channel, void *user_data);
 int ssh_channel_read(struct ssh_channel *channel, void *data, uint32_t len);
 int ssh_channel_write(struct ssh_channel *channel, const void *data, uint32_t len);
 int ssh_channel_read_stderr(struct ssh_channel *channel, void *data, uint32_t len);
